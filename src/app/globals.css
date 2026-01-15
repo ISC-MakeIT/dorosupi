@@ -24,3 +24,17 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.puzzle-bg {
+  background-image: url('/puzzle-bg.png');
+  background-size: 4000px;
+  background-repeat: repeat;
+}
+
+.stripe-yellow {
+  background: repeating-linear-gradient(-45deg, #fef9c3, #fef9c3 50px, #fde047 50px, #fde047 100px);
+}
+
+.stripe-blue {
+  background: repeating-linear-gradient(-45deg, #e0f2fe, #e0f2fe 50px, #7dd3fc 50px, #7dd3fc 100px);
+}
