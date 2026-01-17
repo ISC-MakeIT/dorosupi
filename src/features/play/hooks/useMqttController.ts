@@ -11,7 +11,19 @@ interface UseMqttControllerParams {
 }
 
 const DEFAULT_TOPIC = process.env.NEXT_PUBLIC_MQTT_TOPIC || "m5stick/buttons";
-const BROKER_URL = process.env.NEXT_PUBLIC_MQTT_BROKER_URL || "";
+
+function getBrokerUrl(): string {
+  const baseUrl = process.env.NEXT_PUBLIC_MQTT_BROKER_URL || "";
+  if (!baseUrl) return "";
+
+  // 本番環境（HTTPS）では ws:// を wss:// に変換
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    return baseUrl.replace(/^ws:\/\//, "wss://");
+  }
+  return baseUrl;
+}
+
+const BROKER_URL = getBrokerUrl();
 const MQTT_USER = process.env.NEXT_PUBLIC_MQTT_USER || "";
 const MQTT_PASS = process.env.NEXT_PUBLIC_MQTT_PASS || "";
 
@@ -21,7 +33,7 @@ function buildClientId() {
 
 function normalizePayload(
   rawPayload: Buffer,
-  receivedTopic?: string
+  receivedTopic?: string,
 ): ControllerPayload {
   const raw = rawPayload.toString();
 
@@ -34,20 +46,20 @@ function normalizePayload(
       typeof parsed.dx === "number"
         ? parsed.dx
         : typeof parsed.x === "number"
-        ? parsed.x
-        : undefined;
+          ? parsed.x
+          : undefined;
     const dy =
       typeof parsed.dy === "number"
         ? parsed.dy
         : typeof parsed.y === "number"
-        ? parsed.y
-        : undefined;
+          ? parsed.y
+          : undefined;
     const buttonCandidate =
       typeof parsed.button === "string"
         ? parsed.button
         : typeof parsed.key === "string"
-        ? parsed.key
-        : undefined;
+          ? parsed.key
+          : undefined;
     const step = typeof parsed.step === "number" ? parsed.step : undefined;
 
     return {
@@ -73,7 +85,7 @@ export function useMqttController({
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastPayload, setLastPayload] = useState<ControllerPayload | null>(
-    null
+    null,
   );
   const clientRef = useRef<MqttClient | null>(null);
 
