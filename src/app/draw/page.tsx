@@ -182,6 +182,7 @@ export default function DrawPage() {
           <div className="flex flex-wrap gap-3 mb-6">
             {COLORS.map((color) => (
               <button
+                type="button"
                 key={color.hex}
                 onClick={() => setCurrentColor(color.hex)}
                 className={`w-20 h-20 rounded-2xl border-4 transition-transform hover:scale-110 active:scale-95 flex flex-col items-center justify-center gap-1 ${
@@ -230,12 +231,14 @@ export default function DrawPage() {
         {/* ボタン */}
         <div className="flex gap-4 justify-center">
           <button
+            type="button"
             onClick={clearCanvas}
             className="px-8 py-4 bg-red-500 hover:bg-red-600 active:scale-95 text-white text-2xl font-bold rounded-2xl border-4 border-red-700 transition-all shadow-lg"
           >
             リセット
           </button>
           <button
+            type="button"
             onClick={saveDrawing}
             disabled={isSaving}
             className="px-8 py-4 bg-green-500 hover:bg-green-600 active:scale-95 disabled:bg-gray-400 text-white text-2xl font-bold rounded-2xl border-4 border-green-700 transition-all shadow-lg"

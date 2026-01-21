@@ -1,7 +1,7 @@
-import { DrawingBlob } from "@/features/play/types";
+import type { DrawingBlob } from "@/features/play/types";
 
 export async function fetchDrawings(
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<DrawingBlob[]> {
   const response = await fetch("/api/blobs", { signal, cache: "no-store" });
 
