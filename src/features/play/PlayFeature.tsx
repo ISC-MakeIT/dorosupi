@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchDrawings } from "@/features/play/api/fetchDrawings";
 import { DrawingGrid } from "@/features/play/components/DrawingGrid";
+import { GameSelection } from "@/features/play/components/GameSelection";
 import { SelectedStage } from "@/features/play/components/SelectedStage";
 import { useMqttController } from "@/features/play/hooks/useMqttController";
 import type {
@@ -48,6 +49,8 @@ export function PlayFeature() {
   >({ player1: null, player2: null });
   const [paired, setPaired] = useState(false);
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
+  const [gameStarted, setGameStarted] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -164,6 +167,20 @@ export function PlayFeature() {
     setPosition({ x: 0, y: 0 });
   };
 
+  const handleGameSelect = (gameId: string) => {
+    setSelectedGame(gameId);
+    setGameStarted(true);
+  };
+
+  if (gameStarted && selectedGame) {
+    return (
+      <GameSelection
+        playerSelections={playerSelections}
+        onSelectGame={handleGameSelect}
+      />
+    );
+  }
+
   return (
     <main
       className={`relative min-h-screen bg-gradient-to-b from-sky-100 via-white to-orange-100 flex flex-col ${cherryBomb.className}`}
@@ -229,13 +246,24 @@ export function PlayFeature() {
           onRelease={handleRelease}
         />
 
-        <div className="flex-shrink-0 border-t-4 border-gray-700 pt-4">
-          <DrawingGrid
-            items={drawings}
-            onSelect={handleSelect}
-            isLoading={loading}
-            title={paired ? "ほかの絵" : "絵をえらぶ"}
-          />
+        <div className="flex-shrink-0 border-t-4 border-gray-700 pt-4 flex items-center justify-between">
+          <div className="flex-1">
+            <DrawingGrid
+              items={drawings}
+              onSelect={handleSelect}
+              isLoading={loading}
+              title={paired ? "ほかの絵" : "絵をえらぶ"}
+            />
+          </div>
+          {paired && (
+            <button
+              type="button"
+              onClick={() => handleGameSelect("temp")}
+              className="ml-4 flex-shrink-0 px-4 py-2 bg-green-500 hover:bg-green-600 active:scale-95 text-white font-bold rounded-xl border-3 border-green-700 transition-all shadow-lg"
+            >
+              ゲーム
+            </button>
+          )}
         </div>
       </div>
     </main>
