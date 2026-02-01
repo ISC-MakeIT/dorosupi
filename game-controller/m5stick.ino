@@ -10,6 +10,9 @@ static const uint16_t MQTT_PORT = SECRET_MQTT_PORT;
 static const char* MQTT_USER = SECRET_MQTT_USER;
 static const char* MQTT_PASS = SECRET_MQTT_PASS;
 static const char* TOPIC_RUN = SECRET_TOPIC_RUN;
+static const char* TOPIC_CONTROLLER = "dorosupi/controller";
+
+String macAddress = "";
 
 // ===== 動き判定パラメータ =====
 static const float RUN_DELTA_THRESHOLD_G = 0.45f;
@@ -22,6 +25,22 @@ PubSubClient mqtt(espClient);
 float prevMag = 1.0f;
 uint32_t lastSampleMs = 0;
 uint32_t lastRunSentMs = 0;
+
+void reconnectMQTT() {
+  while (!mqtt.connected()) {
+    M5.Lcd.setCursor(0, 40);
+    M5.Lcd.println("Connecting MQTT...");
+
+    // MACアドレスをクライアントIDとして使用
+    if (mqtt.connect(macAddress.c_str(), MQTT_USER, MQTT_PASS)) {
+      M5.Lcd.println("MQTT Connected!");
+    } else {
+      M5.Lcd.printf("failed, rc=%d\n", mqtt.state());
+      M5.Lcd.println(" retrying in 5 sec");
+      delay(5000);
+    }
+  }
+}
 
 // ★設定モードに入ったときに画面表示を変える関数
 void configModeCallback (WiFiManager *myWiFiManager) {
@@ -65,10 +84,6 @@ void connectWiFiManager() {
   M5.Lcd.println(WiFi.localIP());
 }
 
-void connectMQTT() {
-  mqtt.setServer(MQTT_HOST, MQTT_PORT);
-}
-
 void ensureConnections() {
   // Wi-Fiが切れていたら、WiFiManagerではなく単に再接続を試みるのが安全
   if (WiFi.status() != WL_CONNECTED) {
@@ -77,7 +92,7 @@ void ensureConnections() {
      ESP.restart();
   }
   if (!mqtt.connected()) {
-    connectMQTT();
+    reconnectMQTT();
   }
 }
 
@@ -94,7 +109,10 @@ void setup() {
 
   connectWiFiManager(); 
   
-  connectMQTT();
+  macAddress = WiFi.macAddress();
+  M5.Lcd.println("MAC: " + macAddress);
+
+  mqtt.setServer(MQTT_HOST, MQTT_PORT);
 
   float ax, ay, az;
   M5.Imu.getAccel(&ax, &ay, &az);
@@ -104,10 +122,17 @@ void setup() {
 }
 
 void loop() {
-  // ... (ここは変更なし) ...
   M5.update();
   ensureConnections();
   mqtt.loop();
+
+  if (M5.BtnA.wasPressed()) {
+    String payload = "{\"id\":\"" + macAddress + "\",\"event\":\"connect\"}";
+    bool ok = mqtt.publish(TOPIC_CONTROLLER, payload.c_str());
+
+    M5.Lcd.setCursor(0, 100);
+    M5.Lcd.printf("SEND connect: %s\n", ok ? "OK" : "FAIL");
+  }
   
   const uint32_t now = millis();
   if (now - lastSampleMs < SAMPLE_INTERVAL_MS) return;
