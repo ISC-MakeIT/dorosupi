@@ -6,6 +6,7 @@ interface DrawingGridProps {
   onSelect: (item: DrawingBlob) => void;
   isLoading: boolean;
   title: string;
+  activeDrawingId?: string;
 }
 
 export function DrawingGrid({
@@ -13,6 +14,7 @@ export function DrawingGrid({
   onSelect,
   isLoading,
   title,
+  activeDrawingId,
 }: DrawingGridProps) {
   if (isLoading) {
     return (
@@ -42,7 +44,12 @@ export function DrawingGrid({
               key={item.id}
               type="button"
               onClick={() => onSelect(item)}
-              className="group flex-shrink-0 h-20 w-20 rounded-lg overflow-hidden border-3 border-gray-700 bg-white shadow-md transition-transform hover:scale-110 active:scale-95"
+              className={`group aspect-square rounded-2xl overflow-hidden border-4 bg-white shadow-lg transition-transform hover:scale-105 active:scale-95 ${
+                item.id === activeDrawingId
+                  ? "border-blue-500 scale-105"
+                  : "border-gray-700"
+              }`}
+<!--               className="group flex-shrink-0 h-20 w-20 rounded-lg overflow-hidden border-3 border-gray-700 bg-white shadow-md transition-transform hover:scale-110 active:scale-95" -->
             >
               <div className="relative h-full w-full">
                 <Image

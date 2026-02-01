@@ -44,7 +44,9 @@ export function PlayFeature() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeDrawing, setActiveDrawing] = useState<DrawingBlob | null>(null);
-  const [playerSelections, setPlayerSelections] = useState<
+  const [pairings, setPairings] = useState<Map<string, string>>(new Map()); // controllerId -> drawingId
+  const [positions, setPositions] = useState<Map<string, Position>>(new Map()); // drawingId -> Position
+<!--   const [playerSelections, setPlayerSelections] = useState<
     Record<string, DrawingBlob | null>
   >({ player1: null, player2: null });
   const [paired, setPaired] = useState(false);
@@ -71,19 +73,47 @@ export function PlayFeature() {
 
   const handlePayload = useCallback(
     (payload: ControllerPayload) => {
-      if (!activeDrawing) return;
-      if (!paired) {
-        setPaired(true);
-        setPlayerSelections((prev) => ({
-          ...prev,
-          [payload.playerId ?? "player1"]: activeDrawing,
-        }));
+      // 接続イベントの処理
+      if (payload.event === "connect" && payload.id && activeDrawing) {
+        const controllerId = payload.id;
+        const drawingId = activeDrawing.id;
+
+        setPairings((prev) => {
+          const newPairings = new Map(prev);
+
+          // このコントローラーIDまたは描画IDに紐づく既存のペアをすべて解除
+          for (const [cId, dId] of newPairings.entries()) {
+            if (cId === controllerId || dId === drawingId) {
+              newPairings.delete(cId);
+            }
+          }
+
+          newPairings.set(controllerId, drawingId);
+          return newPairings;
+        });
+
+        // 新しくペアリングされた描画の位置を初期化
+        setPositions((prev) => new Map(prev).set(drawingId, { x: 0, y: 0 }));
+        // 描画を選択解除
+        setActiveDrawing(null);
+//       if (!activeDrawing) return;
+//       if (!paired) {
+//         setPaired(true);
+//         setPlayerSelections((prev) => ({
+//           ...prev,
+//           [payload.playerId ?? "player1"]: activeDrawing,
+//         }));
         return;
       }
 
-      setPosition((prev) => movePosition(prev, payload));
+      // TODO: `run`イベント(M5Stickを振る)にコントローラーIDが含まれていないため、
+      // どのコントローラーがどの描画を動かすべきか判断できない。
+      // 現在は`useMqttController`がトピックから`playerId`を抽出しているが、
+      // `m5stick.ino`の`run`イベントは一意なトピックで送信していない。
+      // この部分を修正するには、`.ino`側で`run`イベントにもコントローラーIDを含める必要がある。
+      // 例: `mqtt.publish(TOPIC_RUN, "{\"id\":\"" + macAddress + "\",\"event\":\"run\"}")`
     },
-    [activeDrawing, paired],
+    [activeDrawing],
   );
 
   const {
@@ -93,9 +123,9 @@ export function PlayFeature() {
     lastPayload,
     enabled,
   } = useMqttController({
-    topic: "yokohama/hackathon/running/player1",
+    topic: "yokohama/hackathon/running/+", // ワイルドカードで複数プレイヤーに対応
     onPayload: handlePayload,
-    multiPlayer: true, // 2-4人対応
+    multiPlayer: true,
   });
 
   useEffect(() => {
@@ -137,8 +167,8 @@ export function PlayFeature() {
     return connected
       ? "M5Stickとつながりました"
       : connecting
-        ? "接続中..."
-        : "接続待ち";
+      ? "接続中..."
+      : "接続待ち";
   }, [connected, connecting, enabled, mqttError]);
 
   const handleSelect = (item: DrawingBlob) => {
@@ -150,23 +180,48 @@ export function PlayFeature() {
       return prev;
     });
     setActiveDrawing(item);
-    setPaired(false);
-    setPosition({ x: 0, y: 0 });
   };
 
   const handleRelease = () => {
-    if (activeDrawing) {
-      setDrawings((prev) => {
-        const exists = prev.some((item) => item.id === activeDrawing.id);
-        return exists ? prev : [activeDrawing, ...prev];
-      });
-    }
+    // 選択中の描画をペアリング解除するロジックはここには含めない
     setActiveDrawing(null);
-    setPlayerSelections((prev) => ({ ...prev, player1: null, player2: null }));
+<!--     setPlayerSelections((prev) => ({ ...prev, player1: null, player2: null }));
     setPaired(false);
-    setPosition({ x: 0, y: 0 });
+    setPosition({ x: 0, y: 0 }); -->
   };
 
+  const pairedDrawingIds = useMemo(() => new Set(pairings.values()), [pairings]);
+
+  const isSelectedPaired = useMemo(() => {
+    if (!activeDrawing) return false;
+    return pairedDrawingIds.has(activeDrawing.id);
+  }, [activeDrawing, pairedDrawingIds]);
+
+  const drawingsToShow = useMemo(() => {
+    // ペアリングされていない描画、または現在選択中の描画のみ表示
+    return drawings.filter(
+      (d) => !pairedDrawingIds.has(d.id) || d.id === activeDrawing?.id,
+    );
+  }, [drawings, pairedDrawingIds, activeDrawing]);
+
+  const gridTitle = useMemo(() => {
+    if (!activeDrawing) return "絵をえらぶ";
+    return isSelectedPaired
+      ? "この絵はペア済みです"
+      : "M5StickのAボタンで決定";
+  }, [activeDrawing, isSelectedPaired]);
+
+  // 表示する用のペアリング情報（描画が主キー）
+  const stagePairings = useMemo(() => {
+    const map = new Map<string, { position: Position; controllerId: string }>();
+    for (const [controllerId, drawingId] of pairings.entries()) {
+      map.set(drawingId, {
+        position: positions.get(drawingId) ?? { x: 0, y: 0 },
+        controllerId,
+      });
+    }
+    return map;
+  }, [pairings, positions]);
   const handleGameSelect = (gameId: string) => {
     setSelectedGame(gameId);
     setGameStarted(true);
@@ -237,9 +292,9 @@ export function PlayFeature() {
 
       <div className="flex-1 flex flex-col gap-4 p-4 md:p-6 overflow-hidden">
         <SelectedStage
+          drawings={drawings}
           drawing={activeDrawing}
-          position={position}
-          paired={paired}
+          stagePairings={stagePairings}
           connected={connected}
           connecting={connecting}
           lastPayload={lastPayload}
