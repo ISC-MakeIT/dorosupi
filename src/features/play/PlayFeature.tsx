@@ -121,25 +121,25 @@ export function PlayFeature() {
 
   return (
     <main
-      className={`min-h-screen bg-gradient-to-b from-sky-100 via-white to-orange-100 p-6 md:p-10 ${cherryBomb.className}`}
+      className={`min-h-screen bg-gradient-to-b from-sky-100 via-white to-orange-100 flex flex-col ${cherryBomb.className}`}
     >
-      <div className="mx-auto flex max-w-6xl flex-col gap-8">
-        <header className="flex flex-col gap-2 rounded-3xl border-8 border-gray-700 bg-white/80 p-6 shadow-xl backdrop-blur">
-          <h1 className="text-4xl md:text-5xl font-black text-gray-800 flex items-center gap-3">
-            <span role="img" aria-label="gamepad">
-              🎮
-            </span>
-            あそぶ
-          </h1>
-          <p className="text-lg text-gray-600">
-            描いた絵をえらんで、M5Stickでうごかしてみよう。
-          </p>
-          <div className="text-sm text-gray-500">{headerStatus}</div>
-          {loadError ? (
-            <div className="text-red-600 text-sm">{loadError}</div>
-          ) : null}
-        </header>
+      <header className="flex-shrink-0 flex flex-col gap-2 rounded-b-3xl border-b-8 border-gray-700 bg-white/90 p-4 md:p-6 shadow-lg backdrop-blur">
+        <h1 className="text-3xl md:text-4xl font-black text-gray-800 flex items-center gap-3">
+          <span role="img" aria-label="gamepad">
+            🎮
+          </span>
+          あそぶ
+        </h1>
+        <p className="text-sm md:text-base text-gray-600">
+          描いた絵をえらんで、M5Stickでうごかしてみよう。
+        </p>
+        <div className="text-xs md:text-sm text-gray-500">{headerStatus}</div>
+        {loadError ? (
+          <div className="text-red-600 text-xs md:text-sm">{loadError}</div>
+        ) : null}
+      </header>
 
+      <div className="flex-1 flex flex-col gap-4 p-4 md:p-6 overflow-hidden">
         <SelectedStage
           drawing={activeDrawing}
           position={position}
@@ -150,12 +150,14 @@ export function PlayFeature() {
           onRelease={handleRelease}
         />
 
-        <DrawingGrid
-          items={drawings}
-          onSelect={handleSelect}
-          isLoading={loading}
-          title={paired ? "ほかの絵" : "絵をえらぶ"}
-        />
+        <div className="flex-shrink-0 border-t-4 border-gray-700 pt-4">
+          <DrawingGrid
+            items={drawings}
+            onSelect={handleSelect}
+            isLoading={loading}
+            title={paired ? "ほかの絵" : "絵をえらぶ"}
+          />
+        </div>
       </div>
     </main>
   );
