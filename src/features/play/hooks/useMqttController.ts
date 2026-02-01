@@ -11,6 +11,7 @@ interface UseMqttControllerParams {
 }
 
 const DEFAULT_TOPIC = process.env.NEXT_PUBLIC_MQTT_TOPIC || "m5stick/buttons";
+const CONTROLLER_TOPIC = "dorosupi/controller";
 
 function getBrokerUrl(): string {
   const baseUrl = process.env.NEXT_PUBLIC_MQTT_BROKER_URL || "";
@@ -46,21 +47,24 @@ function normalizePayload(
       typeof parsed.dx === "number"
         ? parsed.dx
         : typeof parsed.x === "number"
-          ? parsed.x
-          : undefined;
+        ? parsed.x
+        : undefined;
     const dy =
       typeof parsed.dy === "number"
         ? parsed.dy
         : typeof parsed.y === "number"
-          ? parsed.y
-          : undefined;
+        ? parsed.y
+        : undefined;
     const buttonCandidate =
       typeof parsed.button === "string"
         ? parsed.button
         : typeof parsed.key === "string"
-          ? parsed.key
-          : undefined;
+        ? parsed.key
+        : undefined;
     const step = typeof parsed.step === "number" ? parsed.step : undefined;
+    const event =
+      parsed.event === "connect" ? ("connect" as const) : undefined;
+    const id = typeof parsed.id === "string" ? parsed.id : undefined;
 
     return {
       raw,
@@ -69,6 +73,8 @@ function normalizePayload(
       dy,
       button: buttonCandidate?.toLowerCase(),
       step,
+      event,
+      id,
     };
   } catch (_err) {
     const button = raw.trim().toLowerCase();
@@ -88,6 +94,11 @@ export function useMqttController({
     null,
   );
   const clientRef = useRef<MqttClient | null>(null);
+  const onPayloadRef = useRef(onPayload);
+
+  useEffect(() => {
+    onPayloadRef.current = onPayload;
+  }, [onPayload]);
 
   const canConnect = useMemo(() => Boolean(BROKER_URL), []);
 
@@ -117,7 +128,8 @@ export function useMqttController({
         ? topic.replace(/\/player\d+$/, "/+") // "player1" -> "+"
         : topic;
 
-      client.subscribe(subscriptionTopic, (subscribeError) => {
+      const topicsToSubscribe = [subscriptionTopic, CONTROLLER_TOPIC];
+      client.subscribe(topicsToSubscribe, (subscribeError) => {
         if (subscribeError) {
           setError(subscribeError.message);
         }
@@ -127,7 +139,7 @@ export function useMqttController({
     client.on("message", (receivedTopic, payload) => {
       const normalized = normalizePayload(payload as Buffer, receivedTopic);
       setLastPayload(normalized);
-      onPayload?.(normalized);
+      onPayloadRef.current?.(normalized);
     });
 
     client.on("error", (err) => {
@@ -143,7 +155,7 @@ export function useMqttController({
       client.end(true);
       clientRef.current = null;
     };
-  }, [canConnect, onPayload, topic, multiPlayer]);
+  }, [canConnect, topic, multiPlayer]);
 
   return {
     connected,
