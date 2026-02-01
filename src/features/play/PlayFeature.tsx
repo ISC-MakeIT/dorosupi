@@ -1,6 +1,7 @@
 "use client";
 
 import { Cherry_Bomb_One } from "next/font/google";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchDrawings } from "@/features/play/api/fetchDrawings";
 import { DrawingGrid } from "@/features/play/components/DrawingGrid";
@@ -42,6 +43,9 @@ export function PlayFeature() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeDrawing, setActiveDrawing] = useState<DrawingBlob | null>(null);
+  const [playerSelections, setPlayerSelections] = useState<
+    Record<string, DrawingBlob | null>
+  >({ player1: null, player2: null });
   const [paired, setPaired] = useState(false);
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
 
@@ -67,9 +71,10 @@ export function PlayFeature() {
       if (!activeDrawing) return;
       if (!paired) {
         setPaired(true);
-        setDrawings((prev) =>
-          prev.filter((item) => item.id !== activeDrawing.id),
-        );
+        setPlayerSelections((prev) => ({
+          ...prev,
+          [payload.playerId ?? "player1"]: activeDrawing,
+        }));
         return;
       }
 
@@ -96,6 +101,11 @@ export function PlayFeature() {
 
       if (key === "1") {
         handlePayload({ raw: "run", button: "run", playerId: "player1" });
+        return;
+      }
+
+      if (key === "2") {
+        handlePayload({ raw: "run", button: "run", playerId: "player2" });
         return;
       }
 
@@ -129,6 +139,13 @@ export function PlayFeature() {
   }, [connected, connecting, enabled, mqttError]);
 
   const handleSelect = (item: DrawingBlob) => {
+    setDrawings((prev) => {
+      if (activeDrawing && activeDrawing.id !== item.id) {
+        const exists = prev.some((drawing) => drawing.id === activeDrawing.id);
+        return exists ? prev : [activeDrawing, ...prev];
+      }
+      return prev;
+    });
     setActiveDrawing(item);
     setPaired(false);
     setPosition({ x: 0, y: 0 });
@@ -142,14 +159,49 @@ export function PlayFeature() {
       });
     }
     setActiveDrawing(null);
+    setPlayerSelections((prev) => ({ ...prev, player1: null, player2: null }));
     setPaired(false);
     setPosition({ x: 0, y: 0 });
   };
 
   return (
     <main
-      className={`min-h-screen bg-gradient-to-b from-sky-100 via-white to-orange-100 flex flex-col ${cherryBomb.className}`}
+      className={`relative min-h-screen bg-gradient-to-b from-sky-100 via-white to-orange-100 flex flex-col ${cherryBomb.className}`}
     >
+      <div className="absolute top-3 right-3 md:top-4 md:right-6 z-10 flex flex-col gap-2">
+        <div className="bg-white/90 border-2 border-gray-700 rounded-xl px-3 py-2 shadow-md">
+          <div className="text-xs font-black text-gray-700">P1</div>
+          {playerSelections.player1 ? (
+            <div className="mt-1 h-10 w-10 rounded-lg overflow-hidden border border-gray-300">
+              <Image
+                src={playerSelections.player1.url}
+                alt="player1 drawing"
+                width={40}
+                height={40}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="text-[10px] text-gray-400">-</div>
+          )}
+        </div>
+        <div className="bg-white/90 border-2 border-gray-700 rounded-xl px-3 py-2 shadow-md">
+          <div className="text-xs font-black text-gray-700">P2</div>
+          {playerSelections.player2 ? (
+            <div className="mt-1 h-10 w-10 rounded-lg overflow-hidden border border-gray-300">
+              <Image
+                src={playerSelections.player2.url}
+                alt="player2 drawing"
+                width={40}
+                height={40}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="text-[10px] text-gray-400">-</div>
+          )}
+        </div>
+      </div>
       <header className="flex-shrink-0 flex flex-col gap-2 rounded-b-3xl border-b-8 border-gray-700 bg-white/90 p-4 md:p-6 shadow-lg backdrop-blur">
         <h1 className="text-3xl md:text-4xl font-black text-gray-800 flex items-center gap-3">
           <span role="img" aria-label="gamepad">
