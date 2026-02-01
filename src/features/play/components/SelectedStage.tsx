@@ -55,13 +55,15 @@ export function SelectedStage({
           <>
             <div className="relative h-full w-full flex items-center justify-center p-4">
               <div
-                className="absolute max-h-full max-w-full"
+                className="absolute"
                 style={{
-                  transform: `translate(${position.x}%, ${position.y}%)`,
+                  transform: `translate(calc(-50% + ${position.x}%), calc(-50% + ${position.y}%))`,
                   transition: "transform 0.1s ease-out",
+                  left: "50%",
+                  top: "50%",
                 }}
               >
-                <div className="relative h-40 w-40 md:h-48 md:w-48">
+                <div className="relative h-64 w-64 md:h-80 md:w-80">
                   <Image
                     src={drawing.url}
                     alt="selected drawing"
