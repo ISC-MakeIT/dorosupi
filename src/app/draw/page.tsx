@@ -31,8 +31,7 @@ export default function DrawPage() {
     if (canvas) {
       const context = canvas.getContext("2d");
       if (context) {
-        context.fillStyle = "white";
-        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.clearRect(0, 0, canvas.width, canvas.height);
       }
     }
   }, []);
@@ -112,8 +111,7 @@ export default function DrawPage() {
     if (canvas) {
       const context = canvas.getContext("2d");
       if (context) {
-        context.fillStyle = "white";
-        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.clearRect(0, 0, canvas.width, canvas.height);
       }
     }
   };
@@ -160,7 +158,7 @@ export default function DrawPage() {
         </h1>
 
         {/* キャンバス */}
-        <div className="mb-8 border-8 border-gray-600 rounded-2xl overflow-hidden bg-white shadow-lg">
+        <div className="mb-8 border-8 border-gray-600 rounded-2xl overflow-hidden bg-transparent shadow-lg">
           <canvas
             ref={canvasRef}
             width={800}
@@ -172,7 +170,7 @@ export default function DrawPage() {
             onTouchStart={startDrawing}
             onTouchMove={draw}
             onTouchEnd={stopDrawing}
-            className="w-full bg-white cursor-crosshair"
+            className="w-full bg-transparent cursor-crosshair"
           />
         </div>
 
