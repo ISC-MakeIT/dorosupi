@@ -17,4 +17,6 @@ export interface ControllerPayload {
   dy?: number;
   button?: string;
   step?: number;
+  event?: "connect";
+  id?: string;
 }
