@@ -28,13 +28,15 @@ export default function HomePage() {
             ]}
           />
         </Link>
-        <Card
-          title="あそぶ"
-          icon="/gamepad-icon.png"
-          iconAlt="ゲームパッド"
-          stripeClass="stripe-blue"
-          textColors={["text-green-500", "text-blue-400", "text-yellow-400"]}
-        />
+        <Link href="/play" className="flex-1">
+          <Card
+            title="あそぶ"
+            icon="/gamepad-icon.png"
+            iconAlt="ゲームパッド"
+            stripeClass="stripe-blue"
+            textColors={["text-green-500", "text-blue-400", "text-yellow-400"]}
+          />
+        </Link>
       </div>
     </main>
   );
