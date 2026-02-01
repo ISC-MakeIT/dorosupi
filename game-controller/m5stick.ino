@@ -1,19 +1,18 @@
 #include <M5StickCPlus2.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include "env.h" 
 
-// ===== WiFi / MQTT 設定 =====
+static const char* WIFI_SSID = SECRET_WIFI_SSID;
+static const char* WIFI_PASS = SECRET_WIFI_PASS;
 
-static const char* WIFI_SSID = "";
-static const char* WIFI_PASS = "";
+static const char* MQTT_HOST = SECRET_MQTT_HOST;
+static const uint16_t MQTT_PORT = SECRET_MQTT_PORT;
 
-static const char* MQTT_HOST = "";
-static const uint16_t MQTT_PORT = ;
+static const char* MQTT_USER = SECRET_MQTT_USER;
+static const char* MQTT_PASS = SECRET_MQTT_PASS;
 
-static const char* MQTT_USER = "";
-static const char* MQTT_PASS = "";
-
-static const char* TOPIC_RUN = "";
+static const char* TOPIC_RUN = SECRET_TOPIC_RUN;
 
 // ===== 動き判定パラメータ =====
 // 「加速度の変化量（Δ|a|）」がこの値を超えると “走った” と判定
