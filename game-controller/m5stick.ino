@@ -9,10 +9,12 @@ static const char* MQTT_HOST = SECRET_MQTT_HOST;
 static const uint16_t MQTT_PORT = SECRET_MQTT_PORT;
 static const char* MQTT_USER = SECRET_MQTT_USER;
 static const char* MQTT_PASS = SECRET_MQTT_PASS;
-static const char* TOPIC_RUN = SECRET_TOPIC_RUN;
+static const char* TOPIC_RUN_BASE = SECRET_TOPIC_RUN_BASE;
+static const char* DEFAULT_PLAYER_ID = SECRET_DEFAULT_PLAYER;
 static const char* TOPIC_CONTROLLER = "dorosupi/controller";
 
 String macAddress = "";
+String playerId = "";
 
 // ===== 動き判定パラメータ =====
 static const float RUN_DELTA_THRESHOLD_G = 0.45f;
@@ -25,6 +27,15 @@ PubSubClient mqtt(espClient);
 float prevMag = 1.0f;
 uint32_t lastSampleMs = 0;
 uint32_t lastRunSentMs = 0;
+
+String buildRunTopic() {
+  return String(TOPIC_RUN_BASE) + "/" + playerId;
+}
+
+void showPlayer() {
+  M5.Lcd.setCursor(0, 20);
+  M5.Lcd.printf("Player: %s   \n", playerId.c_str());
+}
 
 void reconnectMQTT() {
   while (!mqtt.connected()) {
@@ -112,6 +123,9 @@ void setup() {
   macAddress = WiFi.macAddress();
   M5.Lcd.println("MAC: " + macAddress);
 
+  playerId = String(DEFAULT_PLAYER_ID);
+  showPlayer();
+
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
 
   float ax, ay, az;
@@ -126,8 +140,13 @@ void loop() {
   ensureConnections();
   mqtt.loop();
 
+  if (M5.BtnB.wasPressed()) {
+    playerId = (playerId == "player1") ? "player2" : "player1";
+    showPlayer();
+  }
+
   if (M5.BtnA.wasPressed()) {
-    String payload = "{\"id\":\"" + macAddress + "\",\"event\":\"connect\"}";
+    String payload = "{\"id\":\"" + macAddress + "\",\"event\":\"connect\",\"playerId\":\"" + playerId + "\"}";
     bool ok = mqtt.publish(TOPIC_CONTROLLER, payload.c_str());
 
     M5.Lcd.setCursor(0, 100);
@@ -151,7 +170,8 @@ void loop() {
   M5.Lcd.printf("|a|=%.2fg d=%.2f   \n", mag, delta);
 
   if (delta >= RUN_DELTA_THRESHOLD_G && (now - lastRunSentMs) >= RUN_COOLDOWN_MS) {
-    bool ok = mqtt.publish(TOPIC_RUN, "run");
+    String topic = buildRunTopic();
+    bool ok = mqtt.publish(topic.c_str(), "run");
     lastRunSentMs = now;
     M5.Lcd.setCursor(0, 80);
     M5.Lcd.printf("SEND run: %s\n", ok ? "OK" : "FAIL");
