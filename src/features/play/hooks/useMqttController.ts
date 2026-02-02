@@ -47,23 +47,27 @@ function normalizePayload(
       typeof parsed.dx === "number"
         ? parsed.dx
         : typeof parsed.x === "number"
-        ? parsed.x
-        : undefined;
+          ? parsed.x
+          : undefined;
     const dy =
       typeof parsed.dy === "number"
         ? parsed.dy
         : typeof parsed.y === "number"
-        ? parsed.y
-        : undefined;
+          ? parsed.y
+          : undefined;
     const buttonCandidate =
       typeof parsed.button === "string"
         ? parsed.button
         : typeof parsed.key === "string"
-        ? parsed.key
-        : undefined;
+          ? parsed.key
+          : undefined;
     const step = typeof parsed.step === "number" ? parsed.step : undefined;
     const event =
-      parsed.event === "connect" ? ("connect" as const) : undefined;
+      parsed.event === "connect"
+        ? ("connect" as const)
+        : parsed.event === "run"
+          ? ("run" as const)
+          : undefined;
     const id = typeof parsed.id === "string" ? parsed.id : undefined;
 
     return {

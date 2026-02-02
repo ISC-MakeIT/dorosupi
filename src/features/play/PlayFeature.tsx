@@ -233,6 +233,7 @@ export function PlayFeature() {
         player1Drawing={player1Drawing}
         player2Drawing={player2Drawing}
         onPayload={handlePayload}
+        lastPayload={lastPayload}
         onBack={handleBackFromGame}
       />
     );

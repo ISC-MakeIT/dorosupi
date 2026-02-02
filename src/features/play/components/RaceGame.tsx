@@ -15,13 +15,15 @@ interface RaceGameProps {
   player1Drawing: DrawingBlob | null;
   player2Drawing: DrawingBlob | null;
   onPayload: (payload: ControllerPayload) => void;
+  lastPayload: ControllerPayload | null;
   onBack: () => void;
 }
 
 export function RaceGame({
   player1Drawing,
   player2Drawing,
-  onPayload,
+  onPayload: _onPayload,
+  lastPayload,
   onBack,
 }: RaceGameProps) {
   const [gamePhase, setGamePhase] = useState<GamePhase>("ready");
@@ -56,6 +58,52 @@ export function RaceGame({
     return () => clearInterval(timer);
   }, [gamePhase]);
 
+  const resolvePlayerFromPayload = useCallback(
+    (payload: ControllerPayload): 1 | 2 | null => {
+      const playerId = payload.playerId?.toLowerCase();
+      const controllerId = payload.id?.toLowerCase();
+
+      if (playerId?.includes("player1") || controllerId?.includes("player1")) {
+        return 1;
+      }
+      if (playerId?.includes("player2") || controllerId?.includes("player2")) {
+        return 2;
+      }
+      return null;
+    },
+    [],
+  );
+
+  const advancePlayer = useCallback(
+    (player: 1 | 2) => {
+      if (gamePhase !== "race" || winner) return;
+
+      if (player === 1) {
+        setPlayer1Position((prev) => {
+          const newPos = Math.min(prev + MOVE_AMOUNT, WINNING_POSITION);
+          if (newPos >= WINNING_POSITION && !winner) {
+            setWinner(1);
+            setGamePhase("finish");
+          }
+          return newPos;
+        });
+        setPlayer1Wobble((prev) => prev + 1);
+        return;
+      }
+
+      setPlayer2Position((prev) => {
+        const newPos = Math.min(prev + MOVE_AMOUNT, WINNING_POSITION);
+        if (newPos >= WINNING_POSITION && !winner) {
+          setWinner(2);
+          setGamePhase("finish");
+        }
+        return newPos;
+      });
+      setPlayer2Wobble((prev) => prev + 1);
+    },
+    [gamePhase, winner],
+  );
+
   // キーボードイベントでゲーム操作
   useEffect(() => {
     if (gamePhase !== "race" || winner) return;
@@ -66,15 +114,7 @@ export function RaceGame({
       // Player 1: "1" key
       if (key === "1" && !keyStateRef.current["1"]) {
         if (lastKeyRef.current.player1 !== "1") {
-          setPlayer1Position((prev) => {
-            const newPos = Math.min(prev + MOVE_AMOUNT, WINNING_POSITION);
-            if (newPos >= WINNING_POSITION && !winner) {
-              setWinner(1);
-              setGamePhase("finish");
-            }
-            return newPos;
-          });
-          setPlayer1Wobble((prev) => prev + 1);
+          advancePlayer(1);
           lastKeyRef.current.player1 = "1";
         }
         keyStateRef.current["1"] = true;
@@ -83,15 +123,7 @@ export function RaceGame({
       // Player 2: "2" key
       if (key === "2" && !keyStateRef.current["2"]) {
         if (lastKeyRef.current.player2 !== "2") {
-          setPlayer2Position((prev) => {
-            const newPos = Math.min(prev + MOVE_AMOUNT, WINNING_POSITION);
-            if (newPos >= WINNING_POSITION && !winner) {
-              setWinner(2);
-              setGamePhase("finish");
-            }
-            return newPos;
-          });
-          setPlayer2Wobble((prev) => prev + 1);
+          advancePlayer(2);
           lastKeyRef.current.player2 = "2";
         }
         keyStateRef.current["2"] = true;
@@ -117,7 +149,20 @@ export function RaceGame({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [gamePhase, winner]);
+  }, [advancePlayer, gamePhase, winner]);
+
+  // M5Stickのrunメッセージで走る
+  useEffect(() => {
+    if (!lastPayload || gamePhase !== "race" || winner) return;
+
+    const isRun = lastPayload.event === "run" || lastPayload.button === "run";
+    if (!isRun) return;
+
+    const player = resolvePlayerFromPayload(lastPayload);
+    if (!player) return;
+
+    advancePlayer(player);
+  }, [advancePlayer, gamePhase, lastPayload, resolvePlayerFromPayload, winner]);
 
   const playAgain = () => {
     setPlayer1Position(0);
