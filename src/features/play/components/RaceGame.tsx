@@ -77,9 +77,12 @@ export function RaceGame({
     (player: 1 | 2) => {
       if (gamePhase !== "race" || winner) return;
 
+      // ランダムな移動幅（1.5〜3.5の範囲）
+      const randomMove = 1.5 + Math.random() * 2;
+
       if (player === 1) {
         setPlayer1Position((prev) => {
-          const newPos = Math.min(prev + MOVE_AMOUNT, WINNING_POSITION);
+          const newPos = Math.min(prev + randomMove, WINNING_POSITION);
           if (newPos >= WINNING_POSITION && !winner) {
             setWinner(1);
             setGamePhase("finish");
@@ -91,7 +94,7 @@ export function RaceGame({
       }
 
       setPlayer2Position((prev) => {
-        const newPos = Math.min(prev + MOVE_AMOUNT, WINNING_POSITION);
+        const newPos = Math.min(prev + randomMove, WINNING_POSITION);
         if (newPos >= WINNING_POSITION && !winner) {
           setWinner(2);
           setGamePhase("finish");
