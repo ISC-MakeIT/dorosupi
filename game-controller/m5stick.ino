@@ -21,12 +21,20 @@ static const float RUN_DELTA_THRESHOLD_G = 0.45f;
 static const uint32_t RUN_COOLDOWN_MS = 400;
 static const uint32_t SAMPLE_INTERVAL_MS = 50;
 
+// ===== マイク判定パラメータ =====
+static const float VOICE_THRESHOLD = 1000.0f; // 音声検知のしきい値
+static const uint32_t MIC_SAMPLE_SIZE = 128;  // マイクサンプリングサイズ
+static const uint32_t VOICE_COOLDOWN_MS = 400; // 音声送信のクールダウン
+
 WiFiClient espClient;
 PubSubClient mqtt(espClient);
 
 float prevMag = 1.0f;
 uint32_t lastSampleMs = 0;
 uint32_t lastRunSentMs = 0;
+uint32_t lastVoiceSentMs = 0;
+
+int16_t micBuffer[MIC_SAMPLE_SIZE];
 
 String buildRunTopic() {
   return String(TOPIC_RUN_BASE) + "/" + playerId;
@@ -111,12 +119,29 @@ float magnitudeG(float ax, float ay, float az) {
   return sqrtf(ax * ax + ay * ay + az * az);
 }
 
+// マイクから音声レベルを取得
+float getVoiceLevel() {
+  if (!M5.Mic.record(micBuffer, MIC_SAMPLE_SIZE, 16000)) {
+    return 0.0f;
+  }
+  
+  float sum = 0.0f;
+  for (int i = 0; i < MIC_SAMPLE_SIZE; i++) {
+    sum += abs(micBuffer[i]);
+  }
+  return sum / MIC_SAMPLE_SIZE;
+}
+
 void setup() {
   M5.begin();
   
   M5.Lcd.setRotation(1);
   M5.Lcd.fillScreen(BLACK);
   M5.Lcd.setTextColor(WHITE, BLACK);
+
+  // マイク初期化
+  M5.Mic.begin();
+  M5.Lcd.println("Mic initialized");
 
   connectWiFiManager(); 
   
@@ -169,11 +194,25 @@ void loop() {
   M5.Lcd.setTextSize(1);
   M5.Lcd.printf("|a|=%.2fg d=%.2f   \n", mag, delta);
 
+  // 加速度センサーで動き検知
   if (delta >= RUN_DELTA_THRESHOLD_G && (now - lastRunSentMs) >= RUN_COOLDOWN_MS) {
     String topic = buildRunTopic();
     bool ok = mqtt.publish(topic.c_str(), "run");
     lastRunSentMs = now;
     M5.Lcd.setCursor(0, 80);
-    M5.Lcd.printf("SEND run: %s\n", ok ? "OK" : "FAIL");
+    M5.Lcd.printf("SEND run(motion): %s\n", ok ? "OK" : "FAIL");
+  }
+
+  // マイクで音声検知
+  float voiceLevel = getVoiceLevel();
+  M5.Lcd.setCursor(0, 90);
+  M5.Lcd.printf("Voice: %.1f      \n", voiceLevel);
+
+  if (voiceLevel >= VOICE_THRESHOLD && (now - lastVoiceSentMs) >= VOICE_COOLDOWN_MS) {
+    String topic = buildRunTopic();
+    bool ok = mqtt.publish(topic.c_str(), "run");
+    lastVoiceSentMs = now;
+    M5.Lcd.setCursor(0, 110);
+    M5.Lcd.printf("SEND run(voice): %s\n", ok ? "OK" : "FAIL");
   }
 }
