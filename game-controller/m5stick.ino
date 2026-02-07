@@ -49,17 +49,26 @@ String buildRunTopic() {
 }
 
 void showPlayer() {
-  M5.Lcd.setCursor(0, 20);
-  M5.Lcd.printf("Player: %s   \n", playerId.c_str());
+  M5.Lcd.fillRect(0, 10, 240, 30, BLACK);
+  M5.Lcd.setCursor(10, 15);
+  M5.Lcd.setTextSize(3);
+  M5.Lcd.printf("%s", playerId.c_str());
+  M5.Lcd.setTextSize(1);
 }
 
 void showMode() {
-  M5.Lcd.setCursor(0, 30);
+  M5.Lcd.fillRect(0, 50, 240, 30, BLACK);
+  M5.Lcd.setCursor(10, 55);
+  M5.Lcd.setTextSize(2);
   if (currentMode == MODE_MOTION) {
-    M5.Lcd.printf("Mode: MOTION   \n");
+    M5.Lcd.setTextColor(CYAN, BLACK);
+    M5.Lcd.printf("MOTION");
   } else {
-    M5.Lcd.printf("Mode: VOICE    \n");
+    M5.Lcd.setTextColor(YELLOW, BLACK);
+    M5.Lcd.printf("VOICE");
   }
+  M5.Lcd.setTextColor(WHITE, BLACK);
+  M5.Lcd.setTextSize(1);
 }
 
 void reconnectMQTT() {
@@ -158,16 +167,11 @@ void setup() {
 
   // マイク初期化
   M5.Mic.begin();
-  M5.Lcd.println("Mic initialized");
 
   connectWiFiManager(); 
   
   macAddress = WiFi.macAddress();
-  M5.Lcd.println("MAC: " + macAddress);
-
   playerId = String(DEFAULT_PLAYER_ID);
-  showPlayer();
-  showMode();
 
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
 
@@ -175,7 +179,10 @@ void setup() {
   M5.Imu.getAccel(&ax, &ay, &az);
   prevMag = magnitudeG(ax, ay, az);
 
-  M5.Lcd.println("\nReady!");
+  // 初期画面表示
+  M5.Lcd.fillScreen(BLACK);
+  showPlayer();
+  showMode();
 }
 
 void loop() {
@@ -192,16 +199,19 @@ void loop() {
   if (M5.BtnPWR.wasPressed()) {
     currentMode = (currentMode == MODE_MOTION) ? MODE_VOICE : MODE_MOTION;
     showMode();
-    M5.Lcd.setCursor(0, 100);
-    M5.Lcd.printf("Mode switched!      \n");
   }
 
   if (M5.BtnA.wasPressed()) {
     String payload = "{\"id\":\"" + macAddress + "\",\"event\":\"connect\",\"playerId\":\"" + playerId + "\"}";
     bool ok = mqtt.publish(TOPIC_CONTROLLER, payload.c_str());
 
-    M5.Lcd.setCursor(0, 100);
-    M5.Lcd.printf("SEND connect: %s\n", ok ? "OK" : "FAIL");
+    M5.Lcd.fillRect(0, 90, 240, 40, BLACK);
+    M5.Lcd.setCursor(10, 95);
+    M5.Lcd.setTextSize(2);
+    M5.Lcd.setTextColor(ok ? GREEN : RED, BLACK);
+    M5.Lcd.printf("CONNECT");
+    M5.Lcd.setTextColor(WHITE, BLACK);
+    M5.Lcd.setTextSize(1);
   }
   
   const uint32_t now = millis();
@@ -215,33 +225,38 @@ void loop() {
   float delta = fabsf(mag - prevMag);
   prevMag = mag;
 
-  // デバッグ表示
-  M5.Lcd.setCursor(0, 60);
-  M5.Lcd.setTextSize(1);
-  M5.Lcd.printf("|a|=%.2fg d=%.2f   \n", mag, delta);
-
   // モーションモード: 加速度センサーで動き検知
   if (currentMode == MODE_MOTION) {
     if (delta >= RUN_DELTA_THRESHOLD_G && (now - lastRunSentMs) >= RUN_COOLDOWN_MS) {
       String topic = buildRunTopic();
       bool ok = mqtt.publish(topic.c_str(), "run");
       lastRunSentMs = now;
-      M5.Lcd.setCursor(0, 80);
-      M5.Lcd.printf("SEND run(motion): %s\n", ok ? "OK" : "FAIL");
+      
+      M5.Lcd.fillRect(0, 90, 240, 40, BLACK);
+      M5.Lcd.setCursor(10, 95);
+      M5.Lcd.setTextSize(3);
+      M5.Lcd.setTextColor(GREEN, BLACK);
+      M5.Lcd.printf("RUN!");
+      M5.Lcd.setTextColor(WHITE, BLACK);
+      M5.Lcd.setTextSize(1);
     }
   }
   // ボイスモード: マイクで音声検知
   else if (currentMode == MODE_VOICE) {
     float voiceLevel = getVoiceLevel();
-    M5.Lcd.setCursor(0, 90);
-    M5.Lcd.printf("Voice: %.1f      \n", voiceLevel);
 
     if (voiceLevel >= VOICE_THRESHOLD && (now - lastVoiceSentMs) >= VOICE_COOLDOWN_MS) {
       String topic = buildRunTopic();
       bool ok = mqtt.publish(topic.c_str(), "run");
       lastVoiceSentMs = now;
-      M5.Lcd.setCursor(0, 110);
-      M5.Lcd.printf("SEND run(voice): %s\n", ok ? "OK" : "FAIL");
+      
+      M5.Lcd.fillRect(0, 90, 240, 40, BLACK);
+      M5.Lcd.setCursor(10, 95);
+      M5.Lcd.setTextSize(3);
+      M5.Lcd.setTextColor(GREEN, BLACK);
+      M5.Lcd.printf("RUN!");
+      M5.Lcd.setTextColor(WHITE, BLACK);
+      M5.Lcd.setTextSize(1);
     }
   }
 }
