@@ -26,6 +26,14 @@ static const float VOICE_THRESHOLD = 1000.0f; // 音声検知のしきい値
 static const uint32_t MIC_SAMPLE_SIZE = 128;  // マイクサンプリングサイズ
 static const uint32_t VOICE_COOLDOWN_MS = 400; // 音声送信のクールダウン
 
+// ===== 操作モード =====
+enum ControlMode {
+  MODE_MOTION,  // 振って操作
+  MODE_VOICE    // 声で操作
+};
+
+ControlMode currentMode = MODE_MOTION; // デフォルトは振って操作
+
 WiFiClient espClient;
 PubSubClient mqtt(espClient);
 
@@ -43,6 +51,15 @@ String buildRunTopic() {
 void showPlayer() {
   M5.Lcd.setCursor(0, 20);
   M5.Lcd.printf("Player: %s   \n", playerId.c_str());
+}
+
+void showMode() {
+  M5.Lcd.setCursor(0, 30);
+  if (currentMode == MODE_MOTION) {
+    M5.Lcd.printf("Mode: MOTION   \n");
+  } else {
+    M5.Lcd.printf("Mode: VOICE    \n");
+  }
 }
 
 void reconnectMQTT() {
@@ -150,6 +167,7 @@ void setup() {
 
   playerId = String(DEFAULT_PLAYER_ID);
   showPlayer();
+  showMode();
 
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
 
@@ -168,6 +186,14 @@ void loop() {
   if (M5.BtnB.wasPressed()) {
     playerId = (playerId == "player1") ? "player2" : "player1";
     showPlayer();
+  }
+
+  // Cボタン(PWRボタン)でモード切り替え
+  if (M5.BtnPWR.wasPressed()) {
+    currentMode = (currentMode == MODE_MOTION) ? MODE_VOICE : MODE_MOTION;
+    showMode();
+    M5.Lcd.setCursor(0, 100);
+    M5.Lcd.printf("Mode switched!      \n");
   }
 
   if (M5.BtnA.wasPressed()) {
@@ -194,25 +220,28 @@ void loop() {
   M5.Lcd.setTextSize(1);
   M5.Lcd.printf("|a|=%.2fg d=%.2f   \n", mag, delta);
 
-  // 加速度センサーで動き検知
-  if (delta >= RUN_DELTA_THRESHOLD_G && (now - lastRunSentMs) >= RUN_COOLDOWN_MS) {
-    String topic = buildRunTopic();
-    bool ok = mqtt.publish(topic.c_str(), "run");
-    lastRunSentMs = now;
-    M5.Lcd.setCursor(0, 80);
-    M5.Lcd.printf("SEND run(motion): %s\n", ok ? "OK" : "FAIL");
+  // モーションモード: 加速度センサーで動き検知
+  if (currentMode == MODE_MOTION) {
+    if (delta >= RUN_DELTA_THRESHOLD_G && (now - lastRunSentMs) >= RUN_COOLDOWN_MS) {
+      String topic = buildRunTopic();
+      bool ok = mqtt.publish(topic.c_str(), "run");
+      lastRunSentMs = now;
+      M5.Lcd.setCursor(0, 80);
+      M5.Lcd.printf("SEND run(motion): %s\n", ok ? "OK" : "FAIL");
+    }
   }
+  // ボイスモード: マイクで音声検知
+  else if (currentMode == MODE_VOICE) {
+    float voiceLevel = getVoiceLevel();
+    M5.Lcd.setCursor(0, 90);
+    M5.Lcd.printf("Voice: %.1f      \n", voiceLevel);
 
-  // マイクで音声検知
-  float voiceLevel = getVoiceLevel();
-  M5.Lcd.setCursor(0, 90);
-  M5.Lcd.printf("Voice: %.1f      \n", voiceLevel);
-
-  if (voiceLevel >= VOICE_THRESHOLD && (now - lastVoiceSentMs) >= VOICE_COOLDOWN_MS) {
-    String topic = buildRunTopic();
-    bool ok = mqtt.publish(topic.c_str(), "run");
-    lastVoiceSentMs = now;
-    M5.Lcd.setCursor(0, 110);
-    M5.Lcd.printf("SEND run(voice): %s\n", ok ? "OK" : "FAIL");
+    if (voiceLevel >= VOICE_THRESHOLD && (now - lastVoiceSentMs) >= VOICE_COOLDOWN_MS) {
+      String topic = buildRunTopic();
+      bool ok = mqtt.publish(topic.c_str(), "run");
+      lastVoiceSentMs = now;
+      M5.Lcd.setCursor(0, 110);
+      M5.Lcd.printf("SEND run(voice): %s\n", ok ? "OK" : "FAIL");
+    }
   }
 }
